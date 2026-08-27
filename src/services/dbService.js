@@ -3,9 +3,9 @@
 
 import { storage } from './storage';
 
-const API_ENDPOINT = 'https://shater6.vercel.app/api/productsController';
-const INVOICES_API_ENDPOINT = 'https://shater6.vercel.app/api/invoicesController';
-const DELETE_API_ENDPOINT = 'https://shater6.vercel.app/api/deleteController';
+const API_ENDPOINT = 'https://sheter6.vercel.app/api/productsController';
+const INVOICES_API_ENDPOINT = 'https://sheter6.vercel.app/api/invoicesController';
+const DELETE_API_ENDPOINT = 'https://sheter6.vercel.app/api/deleteController';
 
 // ---------- AUTH HELPER ----------
 export function getAuthHeaders() {
