@@ -12,6 +12,10 @@ import {
   FileText,
   BarChart3,
   ChevronLeft,
+  Bot,
+  Send,
+  X,
+  Sparkles,
 } from 'lucide-react';
 import { fetchStats } from '@/services/dbService';
 import { formatCurrency, formatNumber } from '@/lib/format';
@@ -22,6 +26,21 @@ export function AdminPanel() {
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // حالة الشات الذكي
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [messages, setMessages] = useState([
+    {
+      role: 'assistant',
+      content:
+        'مرحباً بك! أنا مستشارك الذكي المالي والإداري والتسويقي. كيف يمكنني مساعدتك اليوم في تحليل وتطوير أعمال متجرك؟',
+    },
+  ]);
+  const [inputMessage, setInputMessage] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+
+  // رابط نقطة الـ API المعتمد على Vercel
+  const API_ENDPOINT = 'https://raqa-1zhm.vercel.app/api/chatController';
 
   async function loadAll() {
     setLoading(true);
@@ -38,6 +57,46 @@ export function AdminPanel() {
   useEffect(() => {
     loadAll();
   }, []);
+
+  const handleSendMessage = async (customPrompt) => {
+    const messageToSend = customPrompt || inputMessage;
+    if (!messageToSend.trim() || chatLoading) return;
+
+    const newMessages = [...messages, { role: 'user', content: messageToSend }];
+    setMessages(newMessages);
+    if (!customPrompt) setInputMessage('');
+    setChatLoading(true);
+
+    try {
+      const res = await fetch(API_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: messageToSend,
+          // إرسال الإحصائيات الحالية المتوفرة بالنظام للمستشار للتحليل
+          storeData: {
+            contextType: 'FULL_STORE_BUSINESS_AUDIT',
+            stats: stats || {},
+            scope: ['sales', 'purchases', 'inventory', 'invoices', 'marketing', 'finance', 'management'],
+          },
+        }),
+      });
+
+      const data = await res.json();
+      if (data.reply) {
+        setMessages([...newMessages, { role: 'assistant', content: data.reply }]);
+      } else {
+        throw new Error(data.error || 'فشل الحصول على رد من السيرفر');
+      }
+    } catch (err) {
+      setMessages([
+        ...newMessages,
+        { role: 'assistant', content: `عذراً، تعذر الاتصال بالمستشار الذكي: ${err.message}` },
+      ]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
 
   if (loading || !stats) {
     return (
@@ -126,13 +185,24 @@ export function AdminPanel() {
   ];
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="card-mount" style={{ animationDelay: '0ms' }}>
-        <h1 className="text-2xl font-extrabold text-slate-800 dark:text-white">لوحة التحكم</h1>
-        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
-          نظرة عامة على أداء متجرك
-        </p>
+    <div className="space-y-8 relative">
+      {/* Header مع زر الشات الذكي الأعلى */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 card-mount" style={{ animationDelay: '0ms' }}>
+        <div>
+          <h1 className="text-2xl font-extrabold text-slate-800 dark:text-white">لوحة التحكم</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+            نظرة عامة على أداء متجرك وإدارته
+          </p>
+        </div>
+
+        {/* زرار الشات الذكي */}
+        <button
+          onClick={() => setIsChatOpen(true)}
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-medium shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:scale-105 active:scale-95 transition-all duration-300 self-start sm:self-auto"
+        >
+          <Sparkles className="w-5 h-5 text-amber-300 animate-pulse" />
+          <span>المستشار الذكي (إدارة وتسويق)</span>
+        </button>
       </div>
 
       {/* Stat cards — staggered mount + hover lift */}
@@ -213,6 +283,99 @@ export function AdminPanel() {
           <div className="flex justify-between text-sm"><span className="text-slate-500">قيمة المخزون</span><span className="font-bold">{formatCurrency(stats.inventoryValue)}</span></div>
         </div>
       </div>
+
+      {/* AI Chat Drawer / Modal */}
+      {isChatOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm">
+          <div className="w-full max-w-lg bg-white dark:bg-slate-900 h-full shadow-2xl flex flex-col justify-between border-r border-slate-200 dark:border-slate-800">
+            {/* Chat Header */}
+            <div className="p-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Bot className="w-6 h-6 text-amber-300" />
+                <div>
+                  <h3 className="font-bold text-base">مستشار شاطر للإدارة والماليات</h3>
+                  <p className="text-xs text-indigo-100">مبيعات، مشتريات، مخازن، تسويق واقتصاد</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsChatOpen(false)}
+                className="p-1.5 rounded-full hover:bg-white/10 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="p-3 bg-indigo-50 dark:bg-slate-800/50 flex gap-2 overflow-x-auto">
+              <button
+                onClick={() =>
+                  handleSendMessage('حلل لي إحصائيات النظام الحالية وأعطني تقريراً شاملاً لتطوير الأداء وزيادة الأرباح.')
+                }
+                className="text-xs bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 px-3 py-1.5 rounded-full border border-indigo-200 dark:border-slate-600 flex items-center gap-1 whitespace-nowrap hover:bg-indigo-100 transition-colors"
+              >
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+                تحليل أداء النظام وإصدار تقرير
+              </button>
+              <button
+                onClick={() =>
+                  handleSendMessage('كيف يمكنني تنظيم إدارة المخزون وتفادي النقص أو الراكد والتسويق لمنتجاتي بشكل أفضل؟')
+                }
+                className="text-xs bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 px-3 py-1.5 rounded-full border border-indigo-200 dark:border-slate-600 flex items-center gap-1 whitespace-nowrap hover:bg-indigo-100 transition-colors"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                خطة إدارة وتكبير المبيعات
+              </button>
+            </div>
+
+            {/* Chat Messages */}
+            <div className="flex-1 p-4 overflow-y-auto space-y-4">
+              {messages.map((msg, idx) => (
+                <div
+                  key={idx}
+                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-[85%] rounded-2xl p-3.5 text-sm leading-relaxed ${
+                      msg.role === 'user'
+                        ? 'bg-indigo-600 text-white rounded-br-none'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-bl-none border border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+              {chatLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-slate-100 dark:bg-slate-800 text-slate-500 p-3 rounded-2xl flex items-center gap-2 text-xs">
+                    <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                    جاري تحليل البيانات وإعداد التوصيات الإدارية...
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Chat Input */}
+            <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center gap-2">
+              <input
+                type="text"
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                placeholder="اسأل المستشار المالي، التسويقي أو الإداري..."
+                className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white text-sm focus:outline-none focus:border-indigo-500"
+              />
+              <button
+                onClick={() => handleSendMessage()}
+                disabled={chatLoading || !inputMessage.trim()}
+                className="p-2.5 rounded-xl bg-indigo-600 text-white disabled:opacity-50 hover:bg-indigo-700 transition-colors"
+              >
+                <Send className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
