@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { CapacitorHttp } from '@capacitor/core';
 import {
   TrendingUp,
   TrendingDown,
@@ -39,8 +40,8 @@ export function AdminPanel() {
   const [inputMessage, setInputMessage] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
 
-  // رابط نقطة الـ API المعتمد على Vercel (تم التعديل إلى http)
-  const API_ENDPOINT = 'http://raqa-1zhm.vercel.app/api/chatController';
+  // رابط نقطة الـ API المعتمد على Vercel مع HTTPS لمنع إعادة التوجيه
+  const API_ENDPOINT = 'https://raqa-1zhm.vercel.app/api/chatController';
 
   async function loadAll() {
     setLoading(true);
@@ -68,25 +69,27 @@ export function AdminPanel() {
     setChatLoading(true);
 
     try {
-      const res = await fetch(API_ENDPOINT, {
-        method: 'POST',
+      // استخدام CapacitorHttp لتجاوز قيود CORS على الأجهزة المحمولة والويب
+      const options = {
+        url: API_ENDPOINT,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        data: {
           message: messageToSend,
-          // إرسال الإحصائيات الحالية المتوفرة بالنظام للمستشار للتحليل
           storeData: {
             contextType: 'FULL_STORE_BUSINESS_AUDIT',
             stats: stats || {},
             scope: ['sales', 'purchases', 'inventory', 'invoices', 'marketing', 'finance', 'management'],
           },
-        }),
-      });
+        },
+      };
 
-      const data = await res.json();
-      if (data.reply) {
+      const res = await CapacitorHttp.post(options);
+      const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+
+      if (data && data.reply) {
         setMessages([...newMessages, { role: 'assistant', content: data.reply }]);
       } else {
-        throw new Error(data.error || 'فشل الحصول على رد من السيرفر');
+        throw new Error((data && data.error) || 'فشل الحصول على رد من السيرفر');
       }
     } catch (err) {
       setMessages([
