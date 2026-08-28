@@ -39,8 +39,8 @@ export function AdminPanel() {
   const [inputMessage, setInputMessage] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
 
-  // رابط نقطة الـ API المعتمد على Vercel
-  const API_ENDPOINT = 'https://raqa-1zhm.vercel.app/api/chatController';
+  // رابط نقطة الـ API المعتمد على Vercel (تم التعديل إلى http)
+  const API_ENDPOINT = 'http://raqa-1zhm.vercel.app/api/chatController';
 
   async function loadAll() {
     setLoading(true);
