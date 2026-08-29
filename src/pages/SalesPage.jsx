@@ -129,7 +129,11 @@ export function SalesPage() {
     setCart((c) =>
       c.map((x) => {
         if (x.product.id !== productId) return x;
-        const clamped = Math.max(1, Math.min(qty, x.product.quantity));
+        if (qty === '' || isNaN(qty)) {
+          return { ...x, quantity: '' };
+        }
+        const numericQty = Number(qty);
+        const clamped = Math.max(1, Math.min(numericQty, x.product.quantity));
         return { ...x, quantity: clamped };
       })
     );
@@ -149,8 +153,8 @@ export function SalesPage() {
   }
 
   // ---- POS calculations ----
-  const totalItemsCount = cart.reduce((s, l) => s + Number(l.quantity), 0); // إجمالي عدد الوحدات المباعة
-  const subtotal = cart.reduce((s, l) => s + l.quantity * Number(l.product.selling_price), 0);
+  const totalItemsCount = cart.reduce((s, l) => s + (Number(l.quantity) || 0), 0); // إجمالي عدد الوحدات المباعة
+  const subtotal = cart.reduce((s, l) => s + (Number(l.quantity) || 0) * Number(l.product.selling_price), 0);
   const discountAmount = Math.round(subtotal * (discountPct / 100) * 100) / 100;
   const afterDiscount = subtotal - discountAmount;
   const tax = Math.round(afterDiscount * 0.15 * 100) / 100;
@@ -172,9 +176,9 @@ export function SalesPage() {
     try {
       const items = cart.map((l) => ({
         product_id: l.product.id,
-        quantity: Number(l.quantity),
+        quantity: Number(l.quantity) || 1,
         unit_price: Number(l.product.selling_price),
-        subtotal: l.quantity * Number(l.product.selling_price),
+        subtotal: (Number(l.quantity) || 1) * Number(l.product.selling_price),
       }));
 
       // التأكد من استخلاص وحفظ اسم العميل إذا تم إدخاله وإلا اعتماد الفراغ
@@ -212,9 +216,9 @@ export function SalesPage() {
           id: l.product.id,
           invoice_id: invoice.id,
           product_id: l.product.id,
-          quantity: l.quantity,
+          quantity: Number(l.quantity) || 1,
           unit_price: Number(l.product.selling_price),
-          subtotal: l.quantity * Number(l.product.selling_price),
+          subtotal: (Number(l.quantity) || 1) * Number(l.product.selling_price),
           product_name: l.product.name,
           product_sku: l.product.sku,
         })),
@@ -382,13 +386,13 @@ export function SalesPage() {
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-semibold truncate">{l.product.name}</div>
                     <div className="text-xs text-slate-400">
-                      {formatCurrency(Number(l.product.selling_price))} {selectedCurrency} × {l.quantity} وحدة = <span className="font-bold text-slate-700 dark:text-slate-200">{formatCurrency(l.quantity * Number(l.product.selling_price))} {selectedCurrency}</span>
+                      {formatCurrency(Number(l.product.selling_price))} {selectedCurrency} × {l.quantity || 0} وحدة = <span className="font-bold text-slate-700 dark:text-slate-200">{formatCurrency((Number(l.quantity) || 0) * Number(l.product.selling_price))} {selectedCurrency}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
-                      onClick={() => setQty(l.product.id, l.quantity - 1)}
+                      onClick={() => setQty(l.product.id, (Number(l.quantity) || 1) - 1)}
                       className="btn-ghost p-1.5 hover:bg-indigo-50 dark:hover:bg-indigo-900/30"
                     >
                       <Minus className="w-3.5 h-3.5" />
@@ -396,17 +400,33 @@ export function SalesPage() {
 
                     {/* مكان إدخال عدد الوحدات المباعة مباشرة */}
                     <input
-                      type="number"
-                      min={1}
-                      max={l.product.quantity}
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      dir="ltr"
                       value={l.quantity}
-                      onChange={(e) => setQty(l.product.id, Number(e.target.value))}
+                      onBlur={() => {
+                        if (l.quantity === '' || Number(l.quantity) < 1) {
+                          setQty(l.product.id, 1);
+                        }
+                      }}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '') {
+                          setQty(l.product.id, '');
+                        } else {
+                          const parsed = parseInt(val, 10);
+                          if (!isNaN(parsed)) {
+                            setQty(l.product.id, parsed);
+                          }
+                        }
+                      }}
                       className="w-12 text-center text-sm font-bold bg-white dark:bg-slate-700 py-0.5 rounded border border-slate-200 dark:border-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                     />
 
                     <button
                       type="button"
-                      onClick={() => setQty(l.product.id, l.quantity + 1)}
+                      onClick={() => setQty(l.product.id, (Number(l.quantity) || 0) + 1)}
                       className="btn-ghost p-1.5 hover:bg-indigo-50 dark:hover:bg-indigo-900/30"
                     >
                       <Plus className="w-3.5 h-3.5" />
