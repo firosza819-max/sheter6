@@ -1,12 +1,24 @@
-export function formatCurrency(value) {
+export function formatCurrency(value, currencyCode = 'EGP') {
   const num = Number(value) || 0;
-  return (
-    new Intl.NumberFormat('ar-EG', {
-      style: 'decimal',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(num) + ' ر.س'
-  );
+
+  // خريطة الرموز العربية للعملات
+  const currencySymbols = {
+    EGP: 'ج.م',
+    USD: '$',
+    EUR: '€',
+    SAR: 'ر.س',
+    AED: 'د.إ',
+  };
+
+  const symbol = currencySymbols[currencyCode] || currencyCode;
+
+  const formattedNum = new Intl.NumberFormat('ar-EG', {
+    style: 'decimal',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(num);
+
+  return `${formattedNum} ${symbol}`;
 }
 
 export function formatNumber(value) {
