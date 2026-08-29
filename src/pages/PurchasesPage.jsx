@@ -1,5 +1,5 @@
-      import { useEffect, useMemo, useState } from 'react';
-import { ShoppingCart, Plus, Trash2, Loader2, PackagePlus, Search, CheckCircle2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { ShoppingCart, Plus, Trash2, Loader2, PackagePlus, Search, CheckCircle2, Coins } from 'lucide-react';
 import { fetchInventory, createProduct, processPurchaseInvoice } from '@/services/dbService';
 import { useToast } from '@/context/ToastContext';
 import { formatCurrency } from '@/lib/format';
@@ -16,6 +16,9 @@ export function PurchasesPage() {
   const [previousBalance, setPreviousBalance] = useState(0);
   const [paidAmount, setPaidAmount] = useState(0);
   const [notes, setNotes] = useState('');
+
+  // إضافة حالة للعملة المحددة (الافتراضية: جنيه مصري EGP)
+  const [currency, setCurrency] = useState('EGP');
 
   const [lines, setLines] = useState([{ product_id: '', category: '', quantity: 1, unit_price: 0, subtotal: 0 }]);
   const [search, setSearch] = useState('');
@@ -140,6 +143,7 @@ export function PurchasesPage() {
         paid_amount: Number(paidAmount),
         previous_balance: Number(previousBalance),
         notes: notes.trim(),
+        currency: currency,
       };
 
       await processPurchaseInvoice(payload);
@@ -282,7 +286,7 @@ export function PurchasesPage() {
                     {/* الإجمالي */}
                     <div className="sm:col-span-1 text-left font-bold text-sm py-2">
                       <span className="text-xs text-slate-400 block font-normal">الإجمالي</span>
-                      {formatCurrency(line.subtotal || 0)}
+                      {formatCurrency(line.subtotal || 0, currency)}
                     </div>
 
                     {/* زر الإلغاء */}
@@ -324,15 +328,33 @@ export function PurchasesPage() {
             </div>
           </div>
 
-          {/* ملخص المبالغ المالي */}
-          <div className="p-4 rounded-xl bg-slate-100 dark:bg-slate-800/80 space-y-2 text-sm max-w-xl mr-auto">
-            <div className="flex justify-between"><span className="text-slate-500">إجمالي فاتورة الشراء:</span><span className="font-bold">{formatCurrency(subtotal)}</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">المدفوع للمورد:</span><span className="font-bold text-emerald-600">{formatCurrency(Number(paidAmount))}</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">المتبقي من الفاتورة:</span><span className="font-bold text-rose-600">{formatCurrency(remaining)}</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">الرصيد السابق للمورد:</span><span className="font-bold">{formatCurrency(Number(previousBalance))}</span></div>
+          {/* هيدر اختيار العملة */}
+          <div className="p-4 rounded-xl bg-slate-100 dark:bg-slate-800/80 space-y-3 text-sm max-w-xl mr-auto">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+              <span className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                <Coins className="w-4 h-4 text-indigo-500" /> عملة الفاتورة:
+              </span>
+              <select
+                className="input max-w-[140px] text-xs py-1.5 px-3 font-semibold bg-white dark:bg-slate-900 border-indigo-200 dark:border-indigo-800"
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+              >
+                <option value="EGP">جنيه مصري (EGP)</option>
+                <option value="USD">دولار أمريكي (USD)</option>
+                <option value="EUR">يورو (EUR)</option>
+                <option value="SAR">ريال سعودي (SAR)</option>
+                <option value="AED">درهم إماراتي (AED)</option>
+              </select>
+            </div>
+
+            {/* ملخص المبالغ المالي */}
+            <div className="flex justify-between"><span className="text-slate-500">إجمالي فاتورة الشراء:</span><span className="font-bold">{formatCurrency(subtotal, currency)}</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">المدفوع للمورد:</span><span className="font-bold text-emerald-600">{formatCurrency(Number(paidAmount), currency)}</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">المتبقي من الفاتورة:</span><span className="font-bold text-rose-600">{formatCurrency(remaining, currency)}</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">الرصيد السابق للمورد:</span><span className="font-bold">{formatCurrency(Number(previousBalance), currency)}</span></div>
             <div className="flex justify-between pt-2 border-t border-slate-300 dark:border-slate-700 font-extrabold text-base">
               <span>صافي حساب المورد النهائي:</span>
-              <span className="text-indigo-600 dark:text-indigo-400">{formatCurrency(totalBalance)}</span>
+              <span className="text-indigo-600 dark:text-indigo-400">{formatCurrency(totalBalance, currency)}</span>
             </div>
           </div>
 
@@ -356,4 +378,4 @@ export function PurchasesPage() {
       </div>
     </div>
   );
-}  
+}
