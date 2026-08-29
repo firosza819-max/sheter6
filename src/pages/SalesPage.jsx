@@ -15,11 +15,42 @@ import {
   Tag,
   Sparkles,
   User,
+  Globe,
 } from 'lucide-react';
 import { fetchInventory, processSalesInvoice } from '@/services/dbService';
 import { useToast } from '@/context/ToastContext';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { InvoiceModal } from '@/components/InvoiceModal';
+
+const CURRENCIES = [
+  { code: 'SAR', name: 'ريال سعودي (SAR)' },
+  { code: 'USD', name: 'دولار أمريكي (USD)' },
+  { code: 'EUR', name: 'يورو (EUR)' },
+  { code: 'EGP', name: 'جنية مصري (EGP)' },
+  { code: 'AED', name: 'درهم إماراتي (AED)' },
+  { code: 'KWD', name: 'دينار كويتي (KWD)' },
+  { code: 'QAR', name: 'ريال قطري (QAR)' },
+  { code: 'BHD', name: 'دينار بحريني (BHD)' },
+  { code: 'OMR', name: 'ريال عماني (OMR)' },
+  { code: 'JOD', name: 'دينار أردني (JOD)' },
+  { code: 'GBP', name: 'جنيه إسترليني (GBP)' },
+  { code: 'TRY', name: 'ليرة تركية (TRY)' },
+  { code: 'CAD', name: 'دولار كندي (CAD)' },
+  { code: 'AUD', name: 'دولار أسترالي (AUD)' },
+  { code: 'CHF', name: 'فرنك سويسري (CHF)' },
+  { code: 'CNY', name: 'يوان صيني (CNY)' },
+  { code: 'JPY', name: 'ين ياباني (JPY)' },
+  { code: 'INR', name: 'روبية هندية (INR)' },
+  { code: 'MAD', name: 'درهم مغربي (MAD)' },
+  { code: 'DZD', name: 'دينار جزائري (DZD)' },
+  { code: 'TND', name: 'دينار تونسي (TND)' },
+  { code: 'LYD', name: 'دينار ليبي (LYD)' },
+  { code: 'SDG', name: 'جنيه سوداني (SDG)' },
+  { code: 'IQD', name: 'دينار عراقي (IQD)' },
+  { code: 'SYP', name: 'ليرة سورية (SYP)' },
+  { code: 'LBP', name: 'ليرة لبنانية (LBP)' },
+  { code: 'YER', name: 'ريال يمني (YER)' },
+];
 
 const PAYMENT_METHODS = [
   { id: 'cash', label: 'نقداً', icon: Banknote, gradient: 'from-emerald-500 to-green-600' },
@@ -35,6 +66,9 @@ export function SalesPage() {
   const [cart, setCart] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [lastInvoice, setLastInvoice] = useState(null);
+
+  // اختيار العملة
+  const [selectedCurrency, setSelectedCurrency] = useState('SAR');
 
   // حقول بيانات العميل والحسابات الخاصة بالفاتورة
   const [customerName, setCustomerName] = useState('');
@@ -160,6 +194,7 @@ export function SalesPage() {
         paid_amount: actualPaid,
         previous_balance: Number(previousBalance),
         payment_method: paymentMethod,
+        currency: selectedCurrency,
         notes: notes.trim(),
       };
 
@@ -172,6 +207,7 @@ export function SalesPage() {
         tax_amount: tax,
         discount_amount: discountAmount,
         total_units_sold: totalItemsCount,
+        currency: selectedCurrency,
         items: cart.map((l) => ({
           id: l.product.id,
           invoice_id: invoice.id,
@@ -199,13 +235,32 @@ export function SalesPage() {
 
   return (
     <div className="space-y-6 animate-fadein">
-      <div>
-        <h1 className="text-2xl font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
-          <Receipt className="w-6 h-6 text-indigo-600" /> صفحة المبيعات
-        </h1>
-        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
-          نقطة بيع سريعة — اختر الأصناف وحدد عدد الوحدات لتجهيز الفاتورة
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
+            <Receipt className="w-6 h-6 text-indigo-600" /> صفحة المبيعات
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+            نقطة بيع سريعة — اختر الأصناف وحدد عدد الوحدات لتجهيز الفاتورة
+          </p>
+        </div>
+
+        {/* هيدر اختيار العملة */}
+        <div className="flex items-center gap-2 bg-white dark:bg-slate-800 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          <Globe className="w-5 h-5 text-indigo-600" />
+          <span className="text-xs font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap">عملة البيع:</span>
+          <select
+            value={selectedCurrency}
+            onChange={(e) => setSelectedCurrency(e.target.value)}
+            className="input py-1 px-2.5 text-xs font-bold bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-indigo-500"
+          >
+            {CURRENCIES.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -281,7 +336,7 @@ export function SalesPage() {
                     <div className="font-semibold text-sm leading-tight mb-1 line-clamp-2 h-9">{p.name}</div>
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-indigo-600 dark:text-indigo-400 text-sm">
-                        {formatCurrency(Number(p.selling_price))}
+                        {formatCurrency(Number(p.selling_price))} {selectedCurrency}
                       </span>
                       <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
                         المتاح: {p.quantity}
@@ -327,7 +382,7 @@ export function SalesPage() {
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-semibold truncate">{l.product.name}</div>
                     <div className="text-xs text-slate-400">
-                      {formatCurrency(Number(l.product.selling_price))} × {l.quantity} وحدة = <span className="font-bold text-slate-700 dark:text-slate-200">{formatCurrency(l.quantity * Number(l.product.selling_price))}</span>
+                      {formatCurrency(Number(l.product.selling_price))} {selectedCurrency} × {l.quantity} وحدة = <span className="font-bold text-slate-700 dark:text-slate-200">{formatCurrency(l.quantity * Number(l.product.selling_price))} {selectedCurrency}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
@@ -338,9 +393,17 @@ export function SalesPage() {
                     >
                       <Minus className="w-3.5 h-3.5" />
                     </button>
-                    <span className="w-8 text-center text-sm font-bold bg-white dark:bg-slate-700 py-0.5 rounded border border-slate-200 dark:border-slate-600">
-                      {l.quantity}
-                    </span>
+
+                    {/* مكان إدخال عدد الوحدات المباعة مباشرة */}
+                    <input
+                      type="number"
+                      min={1}
+                      max={l.product.quantity}
+                      value={l.quantity}
+                      onChange={(e) => setQty(l.product.id, Number(e.target.value))}
+                      className="w-12 text-center text-sm font-bold bg-white dark:bg-slate-700 py-0.5 rounded border border-slate-200 dark:border-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
+
                     <button
                       type="button"
                       onClick={() => setQty(l.product.id, l.quantity + 1)}
@@ -400,17 +463,17 @@ export function SalesPage() {
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">المجموع الفرعي</span>
-              <span className="font-semibold">{formatCurrency(subtotal)}</span>
+              <span className="font-semibold">{formatCurrency(subtotal)} {selectedCurrency}</span>
             </div>
             {discountAmount > 0 && (
               <div className="flex justify-between text-rose-600 dark:text-rose-400">
                 <span>الخصم ({discountPct}%)</span>
-                <span className="font-semibold">- {formatCurrency(discountAmount)}</span>
+                <span className="font-semibold">- {formatCurrency(discountAmount)} {selectedCurrency}</span>
               </div>
             )}
             <div className="flex justify-between">
               <span className="text-slate-500">الضريبة (15%)</span>
-              <span className="font-semibold">{formatCurrency(tax)}</span>
+              <span className="font-semibold">{formatCurrency(tax)} {selectedCurrency}</span>
             </div>
 
             {/* Paid & Remaining Fields */}
@@ -441,14 +504,14 @@ export function SalesPage() {
 
             <div className="flex justify-between text-xs text-slate-500 pt-1">
               <span>صافي حساب العميل النهائي:</span>
-              <span className="font-bold text-slate-700 dark:text-slate-300">{formatCurrency(finalBalance)}</span>
+              <span className="font-bold text-slate-700 dark:text-slate-300">{formatCurrency(finalBalance)} {selectedCurrency}</span>
             </div>
 
             {/* Highlighted total */}
             <div className="flex justify-between items-center mt-3 p-3 rounded-xl bg-gradient-to-l from-indigo-50 to-blue-50 dark:from-indigo-950/40 dark:to-blue-950/40 border border-indigo-200 dark:border-indigo-800">
               <span className="font-bold text-slate-700 dark:text-slate-200">إجمالي الفاتورة</span>
               <span className="text-xl font-extrabold text-indigo-600 dark:text-indigo-400 value-pulse">
-                {formatCurrency(total)}
+                {formatCurrency(total)} {selectedCurrency}
               </span>
             </div>
           </div>
@@ -512,7 +575,7 @@ export function SalesPage() {
               </>
             ) : (
               <>
-                <ShoppingCart className="w-5 h-5" /> إتمام البيع ({totalItemsCount} قطعة) — {formatCurrency(total)}
+                <ShoppingCart className="w-5 h-5" /> إتمام البيع ({totalItemsCount} قطعة) — {formatCurrency(total)} {selectedCurrency}
               </>
             )}
           </button>
