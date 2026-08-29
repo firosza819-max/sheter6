@@ -399,7 +399,25 @@ export function InvoicesPage() {
         heightLeft -= pdfHeight;
       }
 
-      pdf.save(`${pdfModalData.fileName}.pdf`);
+      const fileName = `${pdfModalData.fileName}.pdf`;
+
+      // التوافق مع الهواتف المحمولة والمتصفحات العادية
+      const pdfBlob = pdf.output('blob');
+      const blobUrl = URL.createObjectURL(pdfBlob);
+
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // فتح الملف مباشرة في لسان جديد للهواتف لضمان التنزيل/المعاينة
+      setTimeout(() => {
+        window.open(blobUrl, '_blank');
+      }, 100);
+
       toast('تم تنزيل ملف PDF بنجاح', 'success');
     } catch (e) {
       toast('حدث خطأ أثناء تحميل ملف PDF', 'error');
