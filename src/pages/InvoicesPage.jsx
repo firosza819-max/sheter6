@@ -401,22 +401,33 @@ export function InvoicesPage() {
 
       const fileName = `${pdfModalData.fileName}.pdf`;
 
-      // التوافق مع الهواتف المحمولة والمتصفحات العادية
-      const pdfBlob = pdf.output('blob');
-      const blobUrl = URL.createObjectURL(pdfBlob);
+      // حفظ الملف وحل مشكلة عدم التحميل في تطبيقات WebView الهواتف (Android)
+      if ((window as any).Capacitor?.isNativePlatform?.() || (window as any).Android) {
+        // إذا كان التطبيق محزوماً بـ Capacitor / WebView
+        const pdfDataUri = pdf.output('datauristring');
+        const link = document.createElement('a');
+        link.href = pdfDataUri;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        // المتصفحات العادية وتصفح الهاتف عبر web
+        const pdfBlob = pdf.output('blob');
+        const blobUrl = URL.createObjectURL(pdfBlob);
 
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = fileName;
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
 
-      // فتح الملف مباشرة في لسان جديد للهواتف لضمان التنزيل/المعاينة
-      setTimeout(() => {
-        window.open(blobUrl, '_blank');
-      }, 100);
+        // تنظيف ذاكرة URL بعد التنزيل
+        setTimeout(() => {
+          URL.revokeObjectURL(blobUrl);
+        }, 10000);
+      }
 
       toast('تم تنزيل ملف PDF بنجاح', 'success');
     } catch (e) {
