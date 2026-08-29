@@ -84,6 +84,12 @@ export function InvoicesPage() {
     return null;
   }, []);
 
+  // دالة استخراج العملة الخاصة بالفاتورة
+  const getInvoiceCurrency = useCallback((inv) => {
+    if (!inv) return undefined;
+    return inv.currency || inv.currency_code || inv.currency_symbol || inv.currencySymbol || undefined;
+  }, []);
+
   const extractItems = useCallback((data) => {
     if (!data) return [];
     let parsedData = data;
@@ -202,11 +208,13 @@ export function InvoicesPage() {
     filteredInvoices.forEach((inv) => {
       const rawName = getPartyName(inv) || 'بدون اسم';
       const key = rawName.toLowerCase();
+      const invCurrency = getInvoiceCurrency(inv);
 
       if (!groups[key]) {
         groups[key] = {
           key,
           party_name: rawName,
+          currency: invCurrency,
           invoice_count: 0,
           invoices: [],
           total_sum: 0,
@@ -230,7 +238,7 @@ export function InvoicesPage() {
     });
 
     return Object.values(groups);
-  }, [filteredInvoices, getPartyName]);
+  }, [filteredInvoices, getPartyName, getInvoiceCurrency]);
 
   const preparePdfData = async (target, type) => {
     setIsPreparingPdf(true);
@@ -243,6 +251,8 @@ export function InvoicesPage() {
         const rows = [];
         fullInvoices.forEach((inv) => {
           const items = extractItems(inv.items);
+          const invCurr = getInvoiceCurrency(inv) || target.currency;
+
           if (items.length > 0) {
             items.forEach((item) => {
               const details = resolveItemDetails(item, inv);
@@ -256,8 +266,8 @@ export function InvoicesPage() {
                 name: details.resolvedName,
                 category: details.resolvedCategory,
                 qty,
-                unitPrice: formatCurrency(unitPrice),
-                subtotal: formatCurrency(qty * unitPrice),
+                unitPrice: formatCurrency(unitPrice, invCurr),
+                subtotal: formatCurrency(qty * unitPrice, invCurr),
               });
             });
           } else {
@@ -269,8 +279,8 @@ export function InvoicesPage() {
               name: inv.name || 'فاتورة إجمالية',
               category: inv.category || 'عام',
               qty: 1,
-              unitPrice: formatCurrency(inv.total_amount || 0),
-              subtotal: formatCurrency(inv.total_amount || 0),
+              unitPrice: formatCurrency(inv.total_amount || 0, invCurr),
+              subtotal: formatCurrency(inv.total_amount || 0, invCurr),
             });
           }
         });
@@ -279,9 +289,9 @@ export function InvoicesPage() {
           title: `كشف حساب مجمع - ${target.party_name}`,
           fileName: `كشف_حساب_${target.party_name}`,
           summary: [
-            { label: 'إجمالي الفواتير', value: formatCurrency(target.total_sum) },
-            { label: 'إجمالي المدفوع', value: formatCurrency(target.paid_sum) },
-            { label: 'إجمالي المتبقي / الديون', value: formatCurrency(target.remaining_sum) },
+            { label: 'إجمالي الفواتير', value: formatCurrency(target.total_sum, target.currency) },
+            { label: 'إجمالي المدفوع', value: formatCurrency(target.paid_sum, target.currency) },
+            { label: 'إجمالي المتبقي / الديون', value: formatCurrency(target.remaining_sum, target.currency) },
           ],
           headers: ['رقم الفاتورة', 'النوع', 'التاريخ', 'اسم الصنف', 'التصنيف', 'الكمية', 'السعر', 'الإجمالي'],
           rows: rows.map(r => [r.invNum, r.type, r.date, r.name, r.category, r.qty, r.unitPrice, r.subtotal])
@@ -289,6 +299,7 @@ export function InvoicesPage() {
       } else {
         const targetInv = await ensureInvoiceItems(target);
         const items = extractItems(targetInv.items);
+        const invCurr = getInvoiceCurrency(targetInv);
         const rows = [];
 
         if (items.length > 0) {
@@ -302,12 +313,12 @@ export function InvoicesPage() {
               details.resolvedName,
               details.resolvedCategory,
               qty,
-              formatCurrency(unitPrice),
-              formatCurrency(qty * unitPrice)
+              formatCurrency(unitPrice, invCurr),
+              formatCurrency(qty * unitPrice, invCurr)
             ]);
           });
         } else {
-          rows.push([1, '-', targetInv.name || 'فاتورة بدون عناصر', targetInv.category || 'عام', 1, formatCurrency(targetInv.total_amount || 0), formatCurrency(targetInv.total_amount || 0)]);
+          rows.push([1, '-', targetInv.name || 'فاتورة بدون عناصر', targetInv.category || 'عام', 1, formatCurrency(targetInv.total_amount || 0, invCurr), formatCurrency(targetInv.total_amount || 0, invCurr)]);
         }
 
         const total = Number(targetInv.total_amount || 0);
@@ -319,9 +330,9 @@ export function InvoicesPage() {
           title: `فاتورة رقم ${targetInv.invoice_number || targetInv.id}${partyName ? ` - ${partyName}` : ''}`,
           fileName: `فاتورة_${targetInv.invoice_number || targetInv.id}`,
           summary: [
-            { label: 'إجمالي الفاتورة', value: formatCurrency(total) },
-            { label: 'المبلغ المدفوع', value: formatCurrency(paid) },
-            { label: 'المتبقي / الديون', value: formatCurrency(remaining) },
+            { label: 'إجمالي الفاتورة', value: formatCurrency(total, invCurr) },
+            { label: 'المبلغ المدفوع', value: formatCurrency(paid, invCurr) },
+            { label: 'المتبقي / الديون', value: formatCurrency(remaining, invCurr) },
           ],
           headers: ['م', 'الكود', 'الصنف', 'التصنيف', 'الكمية', 'السعر', 'الإجمالي'],
           rows
@@ -503,9 +514,9 @@ export function InvoicesPage() {
                             {group.invoice_count}
                           </span>
                         </td>
-                        <td className="p-3 font-bold whitespace-nowrap">{formatCurrency(group.total_sum)}</td>
-                        <td className="p-3 text-emerald-600 font-semibold whitespace-nowrap">{formatCurrency(group.paid_sum)}</td>
-                        <td className="p-3 text-red-600 font-semibold whitespace-nowrap">{formatCurrency(group.remaining_sum)}</td>
+                        <td className="p-3 font-bold whitespace-nowrap">{formatCurrency(group.total_sum, group.currency)}</td>
+                        <td className="p-3 text-emerald-600 font-semibold whitespace-nowrap">{formatCurrency(group.paid_sum, group.currency)}</td>
+                        <td className="p-3 text-red-600 font-semibold whitespace-nowrap">{formatCurrency(group.remaining_sum, group.currency)}</td>
                         <td className="p-3 text-center whitespace-nowrap">
                           <div className="flex items-center justify-center gap-2">
                             <button
@@ -529,7 +540,7 @@ export function InvoicesPage() {
                                 <div key={inv.id} className="flex justify-between items-center bg-white p-2.5 rounded border text-xs flex-wrap gap-2">
                                   <span className="font-bold text-gray-700">{inv.invoice_number || `INV-${inv.id}`}</span>
                                   <span className="text-gray-500">{formatDateShort(inv.created_at)}</span>
-                                  <span className="font-bold">{formatCurrency(inv.total_amount)}</span>
+                                  <span className="font-bold">{formatCurrency(inv.total_amount, getInvoiceCurrency(inv))}</span>
                                   <div className="flex items-center gap-3">
                                     <button
                                       onClick={() => preparePdfData(inv, 'single')}
@@ -581,7 +592,7 @@ export function InvoicesPage() {
                       <td className="p-3 font-bold whitespace-nowrap">{inv.invoice_number || `INV-${inv.id}`}</td>
                       <td className="p-3 font-semibold whitespace-nowrap">{getPartyName(inv) || '-'}</td>
                       <td className="p-3 text-xs text-gray-500 whitespace-nowrap">{formatDateShort(inv.created_at)}</td>
-                      <td className="p-3 font-bold whitespace-nowrap">{formatCurrency(inv.total_amount)}</td>
+                      <td className="p-3 font-bold whitespace-nowrap">{formatCurrency(inv.total_amount, getInvoiceCurrency(inv))}</td>
                       <td className="p-3 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-2">
                           <button
