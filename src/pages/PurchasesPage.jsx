@@ -4,6 +4,36 @@ import { fetchInventory, createProduct, processPurchaseInvoice } from '@/service
 import { useToast } from '@/context/ToastContext';
 import { formatCurrency } from '@/lib/format';
 
+const CURRENCIES = [
+  { code: 'SAR', name: 'ريال سعودي (SAR)' },
+  { code: 'USD', name: 'دولار أمريكي (USD)' },
+  { code: 'EUR', name: 'يورو (EUR)' },
+  { code: 'EGP', name: 'جنية مصري (EGP)' },
+  { code: 'AED', name: 'درهم إماراتي (AED)' },
+  { code: 'KWD', name: 'دينار كويتي (KWD)' },
+  { code: 'QAR', name: 'ريال قطري (QAR)' },
+  { code: 'BHD', name: 'دينار بحريني (BHD)' },
+  { code: 'OMR', name: 'ريال عماني (OMR)' },
+  { code: 'JOD', name: 'دينار أردني (JOD)' },
+  { code: 'GBP', name: 'جنيه إسترليني (GBP)' },
+  { code: 'TRY', name: 'ليرة تركية (TRY)' },
+  { code: 'CAD', name: 'دولار كندي (CAD)' },
+  { code: 'AUD', name: 'دولار أسترالي (AUD)' },
+  { code: 'CHF', name: 'فرنك سويسري (CHF)' },
+  { code: 'CNY', name: 'يوان صيني (CNY)' },
+  { code: 'JPY', name: 'ين ياباني (JPY)' },
+  { code: 'INR', name: 'روبية هندية (INR)' },
+  { code: 'MAD', name: 'درهم مغربي (MAD)' },
+  { code: 'DZD', name: 'دينار جزائري (DZD)' },
+  { code: 'TND', name: 'دينار تونسي (TND)' },
+  { code: 'LYD', name: 'دينار ليبي (LYD)' },
+  { code: 'SDG', name: 'جنيه سوداني (SDG)' },
+  { code: 'IQD', name: 'دينار عراقي (IQD)' },
+  { code: 'SYP', name: 'ليرة سورية (SYP)' },
+  { code: 'LBP', name: 'ليرة لبنانية (LBP)' },
+  { code: 'YER', name: 'ريال يمني (YER)' },
+];
+
 export function PurchasesPage() {
   const { toast } = useToast();
   const [products, setProducts] = useState([]);
@@ -335,15 +365,15 @@ export function PurchasesPage() {
                 <Coins className="w-4 h-4 text-indigo-500" /> عملة الفاتورة:
               </span>
               <select
-                className="input max-w-[140px] text-xs py-1.5 px-3 font-semibold bg-white dark:bg-slate-900 border-indigo-200 dark:border-indigo-800"
+                className="input max-w-[180px] text-xs py-1.5 px-3 font-semibold bg-white dark:bg-slate-900 border-indigo-200 dark:border-indigo-800"
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
               >
-                <option value="EGP">جنيه مصري (EGP)</option>
-                <option value="USD">دولار أمريكي (USD)</option>
-                <option value="EUR">يورو (EUR)</option>
-                <option value="SAR">ريال سعودي (SAR)</option>
-                <option value="AED">درهم إماراتي (AED)</option>
+                {CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.name}
+                  </option>
+                ))}
               </select>
             </div>
 
