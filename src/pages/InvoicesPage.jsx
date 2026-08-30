@@ -343,28 +343,22 @@ export function InvoicesPage() {
 
       const fileName = `${pdfModalData.fileName}.pdf`;
 
-      // تحويل المستند إلى Base64 Data URI لضمان التوافق التام مع أجهزة أندرويد وWebView
-      const pdfDataUri = doc.output('datauristring');
+      // حفظ وتنزيل المباشر باستخدام Blob المتوافق مع متصفحات الأجهزة والمستعرضات المدمجة
+      const blob = doc.output('blob');
+      const blobUrl = URL.createObjectURL(blob);
 
-      // إنشاء عنصر تنزيل ديناميكي وتطبيقه مباشرة
       const link = document.createElement('a');
-      link.href = pdfDataUri;
+      link.href = blobUrl;
       link.download = fileName;
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
-
-      // طريقة احتياطية ثانية في حال تقييد التحميل المباشر للروابط داخل أندرويد WebView
+      
       setTimeout(() => {
-        const newWin = window.open();
-        if (newWin) {
-          newWin.document.write(
-            `<iframe src="${pdfDataUri}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`
-          );
-        }
-      }, 300);
+        document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl);
+      }, 200);
 
-      toast('تم بدء تحميل الفاتورة بنجاح', 'success');
+      toast('تم تحميل الفاتورة بنجاح', 'success');
     } catch (e) {
       toast('حدث خطأ أثناء تحميل الفاتورة', 'error');
     } finally {
@@ -488,7 +482,7 @@ export function InvoicesPage() {
                               disabled={isPreparingPdf}
                               className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-medium flex items-center gap-1 shadow-sm disabled:opacity-50 transition-colors"
                             >
-                              <Eye className="w-3.5 h-3.5" /> عرض PDF
+                              <Eye className="w-3.5 h-3.5" /> معاينة الفاتورة
                             </button>
                             <button onClick={() => toggleRow(group.key)} className="p-1 text-gray-500 hover:text-emerald-700">
                               {expandedRows[group.key] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -601,7 +595,7 @@ export function InvoicesPage() {
 
             <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-white">
               <div className="w-full overflow-x-auto">
-                <div data-pdf-content className="min-w-[700px] p-4 bg-white border rounded-lg" style={{ direction: 'rtl' }}>
+                <div className="min-w-[700px] p-4 bg-white border rounded-lg" style={{ direction: 'rtl' }}>
                   
                   <div className="border-b-2 border-emerald-600 pb-4 mb-4 text-center">
                     <h1 className="text-3xl font-extrabold text-emerald-700 mb-1">شاطر</h1>
