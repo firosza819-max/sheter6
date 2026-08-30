@@ -1,9 +1,8 @@
-import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { 
   FileText, 
   Search, 
   Loader2, 
-  Download, 
   Users, 
   List, 
   ChevronDown, 
@@ -14,7 +13,7 @@ import {
   Share2
 } from 'lucide-react';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import autoTable from 'jspdf-autotable';
 import { 
   fetchInvoices, 
   fetchInvoiceItems, 
@@ -42,8 +41,6 @@ export function InvoicesPage() {
   const [isPreparingPdf, setIsPreparingPdf] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  const printRef = useRef(null);
-
   const productMap = useMemo(() => {
     const map = new Map();
     (products || []).forEach((p) => {
@@ -55,20 +52,10 @@ export function InvoicesPage() {
 
   const getPartyName = useCallback((inv) => {
     if (!inv) return null;
-
     const candidates = [
-      inv.party_name,
-      inv.partyName,
-      inv.customer_name,
-      inv.customerName,
-      inv.client_name,
-      inv.supplier_name,
-      inv.party,
-      inv.customer,
-      inv.supplier,
-      inv.client
+      inv.party_name, inv.partyName, inv.customer_name, inv.customerName,
+      inv.client_name, inv.supplier_name, inv.party, inv.customer, inv.supplier, inv.client
     ];
-
     for (const val of candidates) {
       if (
         val !== null && 
@@ -80,7 +67,6 @@ export function InvoicesPage() {
         return String(val).trim();
       }
     }
-
     return null;
   }, []);
 
@@ -141,14 +127,11 @@ export function InvoicesPage() {
         fetchInvoices(), 
         fetchInventory()
       ]);
-
       const rawInvoices = extractItems(invRes);
       setProducts(prodRes || []);
-
       const resolvedInvoices = await Promise.all(
         rawInvoices.map((inv) => ensureInvoiceItems(inv))
       );
-
       setInvoices(resolvedInvoices);
     } catch (e) {
       toast('تعذّر تحميل البيانات', 'error');
@@ -163,7 +146,6 @@ export function InvoicesPage() {
 
   const handleDeleteInvoice = async (invId) => {
     if (!window.confirm('هل أنت تأكد من رغبتك في حذف هذه الفاتورة؟')) return;
-    
     setDeletingId(invId);
     try {
       await deleteInvoice(invId);
@@ -203,7 +185,6 @@ export function InvoicesPage() {
 
   const groupedByParty = useMemo(() => {
     const groups = {};
-
     filteredInvoices.forEach((inv) => {
       const rawName = getPartyName(inv) || 'بدون اسم';
       const key = rawName.toLowerCase();
@@ -246,7 +227,6 @@ export function InvoicesPage() {
         const fullInvoices = await Promise.all(
           target.invoices.map((inv) => ensureInvoiceItems(inv))
         );
-
         const rows = [];
         fullInvoices.forEach((inv) => {
           const items = extractItems(inv.items);
@@ -345,62 +325,27 @@ export function InvoicesPage() {
   };
 
   const downloadPDF = async () => {
-    if (!printRef.current || !pdfModalData) return;
+    if (!pdfModalData) return;
     setIsDownloading(true);
 
     try {
-      const element = printRef.current;
-
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        windowWidth: 1200,
-        onclone: (clonedDoc) => {
-          const el = clonedDoc.querySelector('[data-pdf-content]');
-          if (el) {
-            el.style.direction = 'rtl';
-            el.style.fontFamily = 'Arial, sans-serif';
-          }
-          const allTextElements = clonedDoc.querySelectorAll('h1, h2, h3, p, span, td, th');
-          allTextElements.forEach((node) => {
-            node.style.letterSpacing = 'normal';
-          });
-        }
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
       
-      const imgWidth = pdfWidth;
-      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
-
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pdfHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
-      }
+      // إعداد كراس الجدول برمجياً بدون html2canvas
+      autoTable(doc, {
+        head: [pdfModalData.headers],
+        body: pdfModalData.rows,
+        startY: 35,
+        styles: { halign: 'center', fontSize: 9, font: 'helvetica' },
+        headStyles: { fillColor: [4, 120, 87], textColor: [255, 255, 255], fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [245, 245, 245] },
+        theme: 'grid',
+      });
 
       const fileName = `${pdfModalData.fileName}.pdf`;
-      const pdfBlob = pdf.output('blob');
+      const pdfBlob = doc.output('blob');
       const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
-      // محاولة الحفظ أو المشاركة المستقرة للأجهزة المحمولة
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
@@ -409,7 +354,6 @@ export function InvoicesPage() {
         });
         toast('تم فتح قائمة حفظ/مشاركة الفاتورة بنجاح', 'success');
       } else {
-        // الخيار المباشر للكمبيوتر أو المتصفحات الكلاسيكية
         const blobUrl = URL.createObjectURL(pdfBlob);
         const link = document.createElement('a');
         link.href = blobUrl;
@@ -417,16 +361,11 @@ export function InvoicesPage() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-
-        setTimeout(() => {
-          URL.revokeObjectURL(blobUrl);
-        }, 10000);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
         toast('تم تنزيل ملف PDF بنجاح', 'success');
       }
     } catch (e) {
-      if (e.name !== 'AbortError') {
-        toast('حدث خطأ أثناء تحميل الفاتورة', 'error');
-      }
+      toast('حدث خطأ أثناء تحميل الفاتورة', 'error');
     } finally {
       setIsDownloading(false);
     }
@@ -660,7 +599,7 @@ export function InvoicesPage() {
             </div>
 
             <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-white">
-              <div className="w-full overflow-x-auto" ref={printRef}>
+              <div className="w-full overflow-x-auto">
                 <div data-pdf-content className="min-w-[700px] p-4 bg-white border rounded-lg" style={{ direction: 'rtl' }}>
                   
                   <div className="border-b-2 border-emerald-600 pb-4 mb-4 text-center">
