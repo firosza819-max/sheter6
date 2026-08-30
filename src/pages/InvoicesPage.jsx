@@ -10,7 +10,8 @@ import {
   ChevronUp,
   Eye,
   Trash2,
-  X
+  X,
+  Share2
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -52,7 +53,6 @@ export function InvoicesPage() {
     return map;
   }, [products]);
 
-  // دالة استخراج اسم الطرف
   const getPartyName = useCallback((inv) => {
     if (!inv) return null;
 
@@ -84,7 +84,6 @@ export function InvoicesPage() {
     return null;
   }, []);
 
-  // دالة استخراج العملة الخاصة بالفاتورة
   const getInvoiceCurrency = useCallback((inv) => {
     if (!inv) return undefined;
     return inv.currency || inv.currency_code || inv.currency_symbol || inv.currencySymbol || undefined;
@@ -287,7 +286,7 @@ export function InvoicesPage() {
 
         setPdfModalData({
           title: `كشف حساب مجمع - ${target.party_name}`,
-          fileName: `كشف_حساب_${target.party_name}`,
+          fileName: `كشف_حساب_${target.party_name.replace(/\s+/g, '_')}`,
           summary: [
             { label: 'إجمالي الفواتير', value: formatCurrency(target.total_sum, target.currency) },
             { label: 'إجمالي المدفوع', value: formatCurrency(target.paid_sum, target.currency) },
@@ -398,24 +397,20 @@ export function InvoicesPage() {
       }
 
       const fileName = `${pdfModalData.fileName}.pdf`;
+      const pdfBlob = pdf.output('blob');
+      const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
-      // تصحيح التحقق من منصة Android / Capacitor لتفادي خطأ السنتاكس
-      const isNative = window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' 
-        ? window.Capacitor.isNativePlatform() 
-        : Boolean(window.Android);
-
-      if (isNative) {
-        const pdfDataUri = pdf.output('datauristring');
-        const link = document.createElement('a');
-        link.href = pdfDataUri;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+      // محاولة الحفظ أو المشاركة المستقرة للأجهزة المحمولة
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: pdfModalData.title,
+          text: `ملف الفاتورة: ${pdfModalData.title}`
+        });
+        toast('تم فتح قائمة حفظ/مشاركة الفاتورة بنجاح', 'success');
       } else {
-        const pdfBlob = pdf.output('blob');
+        // الخيار المباشر للكمبيوتر أو المتصفحات الكلاسيكية
         const blobUrl = URL.createObjectURL(pdfBlob);
-
         const link = document.createElement('a');
         link.href = blobUrl;
         link.download = fileName;
@@ -426,11 +421,12 @@ export function InvoicesPage() {
         setTimeout(() => {
           URL.revokeObjectURL(blobUrl);
         }, 10000);
+        toast('تم تنزيل ملف PDF بنجاح', 'success');
       }
-
-      toast('تم تنزيل ملف PDF بنجاح', 'success');
     } catch (e) {
-      toast('حدث خطأ أثناء تحميل ملف PDF', 'error');
+      if (e.name !== 'AbortError') {
+        toast('حدث خطأ أثناء تحميل الفاتورة', 'error');
+      }
     } finally {
       setIsDownloading(false);
     }
@@ -726,8 +722,8 @@ export function InvoicesPage() {
                 disabled={isDownloading}
                 className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 flex items-center gap-2 shadow-sm disabled:opacity-50"
               >
-                {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                تحميل PDF
+                {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
+                تحميل / مشاركة PDF
               </button>
             </div>
 
