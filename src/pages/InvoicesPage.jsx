@@ -10,7 +10,7 @@ import {
   Eye,
   Trash2,
   X,
-  Share2
+  Download
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -342,40 +342,29 @@ export function InvoicesPage() {
       });
 
       const fileName = `${pdfModalData.fileName}.pdf`;
-      
-      // المحاولة الأولى: استخدام الميزات الحديثة للمشاركة في الهواتف
-      const pdfBlob = doc.output('blob');
-      const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({
-            files: [file],
-            title: pdfModalData.title,
-            text: `ملف الفاتورة: ${pdfModalData.title}`
-          });
-          toast('تمت المشاركة/الحفظ بنجاح', 'success');
-          return;
-        } catch (shareErr) {
-          // في حالة إلغاء المستخدم للمشاركة أو رفض المتصفح لها، ننتقل للتحميل المباشر
-        }
-      }
+      // تحويل المستند إلى Base64 Data URI لضمان التوافق التام مع أجهزة أندرويد وWebView
+      const pdfDataUri = doc.output('datauristring');
 
-      // المحاولة الثانية: التنزيل المباشر المضمون لمتصفحات الموبايل
-      doc.save(fileName);
-
-      // المحاولة الثالثة: فتح الملف مباشرة عبر Blob URL إذا فشل التنزيل التلقائي
-      const blobUrl = URL.createObjectURL(pdfBlob);
+      // إنشاء عنصر تنزيل ديناميكي وتطبيقه مباشرة
       const link = document.createElement('a');
-      link.href = blobUrl;
+      link.href = pdfDataUri;
       link.download = fileName;
-      link.target = '_blank';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
 
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
-      toast('تم تحضير الملف وتنزيله بنجاح', 'success');
+      // طريقة احتياطية ثانية في حال تقييد التحميل المباشر للروابط داخل أندرويد WebView
+      setTimeout(() => {
+        const newWin = window.open();
+        if (newWin) {
+          newWin.document.write(
+            `<iframe src="${pdfDataUri}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`
+          );
+        }
+      }, 300);
+
+      toast('تم بدء تحميل الفاتورة بنجاح', 'success');
     } catch (e) {
       toast('حدث خطأ أثناء تحميل الفاتورة', 'error');
     } finally {
@@ -673,8 +662,8 @@ export function InvoicesPage() {
                 disabled={isDownloading}
                 className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 flex items-center gap-2 shadow-sm disabled:opacity-50"
               >
-                {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
-                تحميل / مشاركة PDF
+                {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                تحميل الفاتورة PDF
               </button>
             </div>
 
