@@ -331,7 +331,6 @@ export function InvoicesPage() {
     try {
       const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
       
-      // إعداد كراس الجدول برمجياً بدون html2canvas
       autoTable(doc, {
         head: [pdfModalData.headers],
         body: pdfModalData.rows,
@@ -343,27 +342,40 @@ export function InvoicesPage() {
       });
 
       const fileName = `${pdfModalData.fileName}.pdf`;
+      
+      // المحاولة الأولى: استخدام الميزات الحديثة للمشاركة في الهواتف
       const pdfBlob = doc.output('blob');
       const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: pdfModalData.title,
-          text: `ملف الفاتورة: ${pdfModalData.title}`
-        });
-        toast('تم فتح قائمة حفظ/مشاركة الفاتورة بنجاح', 'success');
-      } else {
-        const blobUrl = URL.createObjectURL(pdfBlob);
-        const link = document.createElement('a');
-        link.href = blobUrl;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
-        toast('تم تنزيل ملف PDF بنجاح', 'success');
+        try {
+          await navigator.share({
+            files: [file],
+            title: pdfModalData.title,
+            text: `ملف الفاتورة: ${pdfModalData.title}`
+          });
+          toast('تمت المشاركة/الحفظ بنجاح', 'success');
+          return;
+        } catch (shareErr) {
+          // في حالة إلغاء المستخدم للمشاركة أو رفض المتصفح لها، ننتقل للتحميل المباشر
+        }
       }
+
+      // المحاولة الثانية: التنزيل المباشر المضمون لمتصفحات الموبايل
+      doc.save(fileName);
+
+      // المحاولة الثالثة: فتح الملف مباشرة عبر Blob URL إذا فشل التنزيل التلقائي
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+      toast('تم تحضير الملف وتنزيله بنجاح', 'success');
     } catch (e) {
       toast('حدث خطأ أثناء تحميل الفاتورة', 'error');
     } finally {
