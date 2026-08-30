@@ -387,11 +387,9 @@ export function InvoicesPage() {
       let heightLeft = imgHeight;
       let position = 0;
 
-      // إضافة الصفحة الأولى
       pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
       heightLeft -= pdfHeight;
 
-      // التعامل مع متعدد الصفحات تلقائياً إذا كان كشف الحساب طويلاً
       while (heightLeft >= 0) {
         position = heightLeft - imgHeight;
         pdf.addPage();
@@ -401,9 +399,12 @@ export function InvoicesPage() {
 
       const fileName = `${pdfModalData.fileName}.pdf`;
 
-      // حفظ الملف وحل مشكلة عدم التحميل في تطبيقات WebView الهواتف (Android)
-      if ((window as any).Capacitor?.isNativePlatform?.() || (window as any).Android) {
-        // إذا كان التطبيق محزوماً بـ Capacitor / WebView
+      // تصحيح التحقق من منصة Android / Capacitor لتفادي خطأ السنتاكس
+      const isNative = window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' 
+        ? window.Capacitor.isNativePlatform() 
+        : Boolean(window.Android);
+
+      if (isNative) {
         const pdfDataUri = pdf.output('datauristring');
         const link = document.createElement('a');
         link.href = pdfDataUri;
@@ -412,7 +413,6 @@ export function InvoicesPage() {
         link.click();
         document.body.removeChild(link);
       } else {
-        // المتصفحات العادية وتصفح الهاتف عبر web
         const pdfBlob = pdf.output('blob');
         const blobUrl = URL.createObjectURL(pdfBlob);
 
@@ -423,7 +423,6 @@ export function InvoicesPage() {
         link.click();
         document.body.removeChild(link);
 
-        // تنظيف ذاكرة URL بعد التنزيل
         setTimeout(() => {
           URL.revokeObjectURL(blobUrl);
         }, 10000);
