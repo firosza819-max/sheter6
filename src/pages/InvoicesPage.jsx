@@ -13,8 +13,11 @@ import {
   Download,
   Share2
 } from 'lucide-react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import html2pdf from 'html2pdf.js';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
+import { Capacitor } from '@capacitor/core';
+
 import { 
   fetchInvoices, 
   fetchInvoiceItems, 
@@ -23,6 +26,46 @@ import {
 } from '@/services/dbService';
 import { useToast } from '@/context/ToastContext';
 import { formatCurrency, formatDateShort } from '@/lib/format';
+
+/**
+ * دالة التصدير والمشاركة الموحدة (للويب والتطبيقات)
+ */
+export const saveAndExportPDF = async (element, fileName, opt) => {
+  if (!Capacitor.isNativePlatform()) {
+    try {
+      await html2pdf().set(opt).from(element).save();
+    } catch (err) {
+      console.error('خطأ أثناء تحضير PDF للويب:', err);
+      throw err;
+    }
+    return;
+  }
+
+  try {
+    const pdfBase64 = await html2pdf()
+      .set(opt)
+      .from(element)
+      .outputPdf('datauristring');
+
+    const base64Data = pdfBase64.split(',')[1];
+
+    const savedFile = await Filesystem.writeFile({
+      path: fileName,
+      data: base64Data,
+      directory: Directory.Cache
+    });
+
+    await Share.share({
+      title: fileName,
+      text: 'إليك ملف PDF للتقرير المطلوب',
+      url: savedFile.uri,
+      dialogTitle: 'فتح أو مشاركة ملف PDF'
+    });
+  } catch (error) {
+    console.error('حدث خطأ أثناء حفظ أو مشاركة الملف:', error);
+    throw error;
+  }
+};
 
 export function InvoicesPage() {
   const { toast } = useToast();
@@ -41,7 +84,6 @@ export function InvoicesPage() {
   const [pdfModalData, setPdfModalData] = useState(null);
   const [isPreparingPdf, setIsPreparingPdf] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [isSharing, setIsSharing] = useState(false);
 
   const productMap = useMemo(() => {
     const map = new Map();
@@ -268,7 +310,7 @@ export function InvoicesPage() {
 
         setPdfModalData({
           title: `كشف حساب مجمع - ${target.party_name}`,
-          fileName: `كشف_حساب_${target.party_name.replace(/\s+/g, '_')}`,
+          fileName: `كشف_حساب_${target.party_name.replace(/\s+/g, '_')}.pdf`,
           summary: [
             { label: 'إجمالي الفواتير', value: formatCurrency(target.total_sum, target.currency) },
             { label: 'إجمالي المدفوع', value: formatCurrency(target.paid_sum, target.currency) },
@@ -309,7 +351,7 @@ export function InvoicesPage() {
 
         setPdfModalData({
           title: `فاتورة رقم ${targetInv.invoice_number || targetInv.id}${partyName ? ` - ${partyName}` : ''}`,
-          fileName: `فاتورة_${targetInv.invoice_number || targetInv.id}`,
+          fileName: `فاتورة_${targetInv.invoice_number || targetInv.id}.pdf`,
           summary: [
             { label: 'إجمالي الفاتورة', value: formatCurrency(total, invCurr) },
             { label: 'المبلغ المدفوع', value: formatCurrency(paid, invCurr) },
@@ -326,79 +368,32 @@ export function InvoicesPage() {
     }
   };
 
-  // دالة توليد كائن jsPDF لاستخدامه في التحميل والمشاركة
-  const generateJsPDFDoc = () => {
-    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-    autoTable(doc, {
-      head: [pdfModalData.headers],
-      body: pdfModalData.rows,
-      startY: 35,
-      styles: { halign: 'center', fontSize: 9, font: 'helvetica' },
-      headStyles: { fillColor: [4, 120, 87], textColor: [255, 255, 255], fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [245, 245, 245] },
-      theme: 'grid',
-    });
-    return doc;
-  };
-
-  // 1. دالة التصدير والتنزيل المباشر
-  const downloadPDF = async () => {
+  // دالة تحويل وتصدير الـ DOM إلى PDF والمشاركة
+  const handleExportPDF = async () => {
     if (!pdfModalData) return;
+    const element = document.getElementById('pdf-preview-content');
+    if (!element) {
+      toast('عنصر التقرير غير موجود', 'error');
+      return;
+    }
+
     setIsDownloading(true);
 
+    const opt = {
+      margin: 8,
+      filename: pdfModalData.fileName,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    };
+
     try {
-      const doc = generateJsPDFDoc();
-      const fileName = `${pdfModalData.fileName}.pdf`;
-
-      const blob = doc.output('blob');
-      const blobUrl = URL.createObjectURL(blob);
-
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      
-      setTimeout(() => {
-        document.body.removeChild(link);
-        URL.revokeObjectURL(blobUrl);
-      }, 200);
-
-      toast('تم تحميل الفاتورة بنجاح', 'success');
+      await saveAndExportPDF(element, pdfModalData.fileName, opt);
+      toast('تمت عملية تصدير الفاتورة بنجاح', 'success');
     } catch (e) {
-      toast('حدث خطأ أثناء تحميل الفاتورة', 'error');
+      toast('حدث خطأ أثناء تصدير/مشاركة الفاتورة', 'error');
     } finally {
       setIsDownloading(false);
-    }
-  };
-
-  // 2. دالة المشاركة عبر تطبيقات التواصل والجهاز (Web Share API)
-  const sharePDF = async () => {
-    if (!pdfModalData) return;
-    setIsSharing(true);
-
-    try {
-      const doc = generateJsPDFDoc();
-      const fileName = `${pdfModalData.fileName}.pdf`;
-      const blob = doc.output('blob');
-      const file = new File([blob], fileName, { type: 'application/pdf' });
-
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: pdfModalData.title,
-          text: `تقرير ${pdfModalData.title}`,
-        });
-        toast('تمت مشاركة الفاتورة بنجاح', 'success');
-      } else {
-        toast('خاصية مشاركة الملفات غير مدعومة في هذا المتصفح', 'error');
-      }
-    } catch (e) {
-      if (e.name !== 'AbortError') {
-        toast('حدث خطأ أثناء مشاركة الفاتورة', 'error');
-      }
-    } finally {
-      setIsSharing(false);
     }
   };
 
@@ -688,20 +683,19 @@ export function InvoicesPage() {
                 إغلاق
               </button>
               <button
-                onClick={sharePDF}
-                disabled={isSharing || isPreparingPdf}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 flex items-center gap-2 shadow-sm disabled:opacity-50"
-              >
-                {isSharing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
-                مشاركة الفاتورة
-              </button>
-              <button
-                onClick={downloadPDF}
+                onClick={handleExportPDF}
                 disabled={isDownloading || isPreparingPdf}
                 className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 flex items-center gap-2 shadow-sm disabled:opacity-50"
               >
-                {(isDownloading || isPreparingPdf) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                تحميل الفاتورة PDF
+                {(isDownloading || isPreparingPdf) ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <Share2 className="w-4 h-4" />
+                    <Download className="w-4 h-4" />
+                  </>
+                )}
+                حفظ / مشاركة الفاتورة PDF
               </button>
             </div>
 
