@@ -10,7 +10,8 @@ import {
   Eye,
   Trash2,
   X,
-  Download
+  Download,
+  Share2
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -40,6 +41,7 @@ export function InvoicesPage() {
   const [pdfModalData, setPdfModalData] = useState(null);
   const [isPreparingPdf, setIsPreparingPdf] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
 
   const productMap = useMemo(() => {
     const map = new Map();
@@ -324,53 +326,30 @@ export function InvoicesPage() {
     }
   };
 
-  const downloadPDF = async () => {
-    if (!pdfModalData) return;
-    setIsPreparingPdf(true);
-    try {
-      const element = document.getElementById('pdf-preview-content');
-      const fileName = `${pdfModalData.fileName}.pdf`;
-      const opt = {
-        margin: 10,
-        filename: fileName,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
-      };
-
-      if (typeof saveAndExportPDF === 'function') {
-        await saveAndExportPDF(element, fileName, opt);
-        toast('تم تصدير الفاتورة بنجاح', 'success');
-      } else {
-        await downloadPDF_Fallback();
-      }
-    } catch (e) {
-      toast('حدث خطأ أثناء تصدير الفاتورة', 'error');
-    } finally {
-      setIsPreparingPdf(false);
-    }
+  // دالة توليد كائن jsPDF لاستخدامه في التحميل والمشاركة
+  const generateJsPDFDoc = () => {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    autoTable(doc, {
+      head: [pdfModalData.headers],
+      body: pdfModalData.rows,
+      startY: 35,
+      styles: { halign: 'center', fontSize: 9, font: 'helvetica' },
+      headStyles: { fillColor: [4, 120, 87], textColor: [255, 255, 255], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [245, 245, 245] },
+      theme: 'grid',
+    });
+    return doc;
   };
 
-  const downloadPDF_Fallback = async () => {
+  // 1. دالة التصدير والتنزيل المباشر
+  const downloadPDF = async () => {
     if (!pdfModalData) return;
     setIsDownloading(true);
 
     try {
-      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-      
-      autoTable(doc, {
-        head: [pdfModalData.headers],
-        body: pdfModalData.rows,
-        startY: 35,
-        styles: { halign: 'center', fontSize: 9, font: 'helvetica' },
-        headStyles: { fillColor: [4, 120, 87], textColor: [255, 255, 255], fontStyle: 'bold' },
-        alternateRowStyles: { fillColor: [245, 245, 245] },
-        theme: 'grid',
-      });
-
+      const doc = generateJsPDFDoc();
       const fileName = `${pdfModalData.fileName}.pdf`;
 
-      // حفظ وتنزيل المباشر باستخدام Blob المتوافق مع متصفحات الأجهزة والمستعرضات المدمجة
       const blob = doc.output('blob');
       const blobUrl = URL.createObjectURL(blob);
 
@@ -390,6 +369,36 @@ export function InvoicesPage() {
       toast('حدث خطأ أثناء تحميل الفاتورة', 'error');
     } finally {
       setIsDownloading(false);
+    }
+  };
+
+  // 2. دالة المشاركة عبر تطبيقات التواصل والجهاز (Web Share API)
+  const sharePDF = async () => {
+    if (!pdfModalData) return;
+    setIsSharing(true);
+
+    try {
+      const doc = generateJsPDFDoc();
+      const fileName = `${pdfModalData.fileName}.pdf`;
+      const blob = doc.output('blob');
+      const file = new File([blob], fileName, { type: 'application/pdf' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: pdfModalData.title,
+          text: `تقرير ${pdfModalData.title}`,
+        });
+        toast('تمت مشاركة الفاتورة بنجاح', 'success');
+      } else {
+        toast('خاصية مشاركة الملفات غير مدعومة في هذا المتصفح', 'error');
+      }
+    } catch (e) {
+      if (e.name !== 'AbortError') {
+        toast('حدث خطأ أثناء مشاركة الفاتورة', 'error');
+      }
+    } finally {
+      setIsSharing(false);
     }
   };
 
@@ -677,6 +686,14 @@ export function InvoicesPage() {
                 className="px-4 py-2 border rounded-lg text-gray-600 text-sm font-semibold hover:bg-gray-100"
               >
                 إغلاق
+              </button>
+              <button
+                onClick={sharePDF}
+                disabled={isSharing || isPreparingPdf}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 flex items-center gap-2 shadow-sm disabled:opacity-50"
+              >
+                {isSharing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
+                مشاركة الفاتورة
               </button>
               <button
                 onClick={downloadPDF}
