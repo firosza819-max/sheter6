@@ -326,6 +326,33 @@ export function InvoicesPage() {
 
   const downloadPDF = async () => {
     if (!pdfModalData) return;
+    setIsPreparingPdf(true);
+    try {
+      const element = document.getElementById('pdf-preview-content');
+      const fileName = `${pdfModalData.fileName}.pdf`;
+      const opt = {
+        margin: 10,
+        filename: fileName,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+      };
+
+      if (typeof saveAndExportPDF === 'function') {
+        await saveAndExportPDF(element, fileName, opt);
+        toast('تم تصدير الفاتورة بنجاح', 'success');
+      } else {
+        await downloadPDF_Fallback();
+      }
+    } catch (e) {
+      toast('حدث خطأ أثناء تصدير الفاتورة', 'error');
+    } finally {
+      setIsPreparingPdf(false);
+    }
+  };
+
+  const downloadPDF_Fallback = async () => {
+    if (!pdfModalData) return;
     setIsDownloading(true);
 
     try {
@@ -595,7 +622,7 @@ export function InvoicesPage() {
 
             <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-white">
               <div className="w-full overflow-x-auto">
-                <div className="min-w-[700px] p-4 bg-white border rounded-lg" style={{ direction: 'rtl' }}>
+                <div id="pdf-preview-content" className="min-w-[700px] p-4 bg-white border rounded-lg" style={{ direction: 'rtl' }}>
                   
                   <div className="border-b-2 border-emerald-600 pb-4 mb-4 text-center">
                     <h1 className="text-3xl font-extrabold text-emerald-700 mb-1">شاطر</h1>
@@ -653,10 +680,10 @@ export function InvoicesPage() {
               </button>
               <button
                 onClick={downloadPDF}
-                disabled={isDownloading}
+                disabled={isDownloading || isPreparingPdf}
                 className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 flex items-center gap-2 shadow-sm disabled:opacity-50"
               >
-                {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                {(isDownloading || isPreparingPdf) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                 تحميل الفاتورة PDF
               </button>
             </div>
