@@ -312,9 +312,9 @@ export function InvoicesPage() {
           title: `كشف حساب مجمع - ${target.party_name}`,
           fileName: `كشف_حساب_${target.party_name.replace(/\s+/g, '_')}.pdf`,
           summary: [
-            { label: 'إجمالي الفواتير', value: formatCurrency(target.total_sum, target.currency) },
-            { label: 'إجمالي المدفوع', value: formatCurrency(target.paid_sum, target.currency) },
-            { label: 'إجمالي المتبقي / الديون', value: formatCurrency(target.remaining_sum, target.currency) },
+            { label: 'إجمالي الفواتير', value: formatCurrency(target.total_sum, target.currency), color: 'text-slate-800', bg: 'bg-slate-50 border-slate-200' },
+            { label: 'إجمالي المدفوع', value: formatCurrency(target.paid_sum, target.currency), color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200' },
+            { label: 'إجمالي المتبقي / الديون', value: formatCurrency(target.remaining_sum, target.currency), color: 'text-rose-700', bg: 'bg-rose-50 border-rose-200' },
           ],
           headers: ['رقم الفاتورة', 'النوع', 'التاريخ', 'اسم الصنف', 'التصنيف', 'الكمية', 'السعر', 'الإجمالي'],
           rows: rows.map(r => [r.invNum, r.type, r.date, r.name, r.category, r.qty, r.unitPrice, r.subtotal])
@@ -353,9 +353,9 @@ export function InvoicesPage() {
           title: `فاتورة رقم ${targetInv.invoice_number || targetInv.id}${partyName ? ` - ${partyName}` : ''}`,
           fileName: `فاتورة_${targetInv.invoice_number || targetInv.id}.pdf`,
           summary: [
-            { label: 'إجمالي الفاتورة', value: formatCurrency(total, invCurr) },
-            { label: 'المبلغ المدفوع', value: formatCurrency(paid, invCurr) },
-            { label: 'المتبقي / الديون', value: formatCurrency(remaining, invCurr) },
+            { label: 'إجمالي الفاتورة', value: formatCurrency(total, invCurr), color: 'text-slate-800', bg: 'bg-slate-50 border-slate-200' },
+            { label: 'المبلغ المدفوع', value: formatCurrency(paid, invCurr), color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200' },
+            { label: 'المتبقي / الديون', value: formatCurrency(remaining, invCurr), color: 'text-rose-700', bg: 'bg-rose-50 border-rose-200' },
           ],
           headers: ['م', 'الكود', 'الصنف', 'التصنيف', 'الكمية', 'السعر', 'الإجمالي'],
           rows
@@ -379,10 +379,16 @@ export function InvoicesPage() {
     setIsDownloading(true);
 
     const opt = {
-      margin: 10,
+      margin: 8,
       filename: pdfModalData.fileName,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, logging: false },
+      html2canvas: { 
+        scale: 2, 
+        useCORS: true, 
+        logging: false,
+        backgroundColor: '#ffffff',
+        letterRendering: true
+      },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
     };
 
@@ -613,11 +619,11 @@ export function InvoicesPage() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden dir-rtl">
             
-            <div className="flex justify-between items-center p-4 bg-black text-white shrink-0">
+            <div className="flex justify-between items-center p-4 bg-emerald-800 text-white shrink-0">
               <h2 className="text-base sm:text-lg font-bold">{pdfModalData.title}</h2>
               <button 
                 onClick={() => setPdfModalData(null)}
-                className="p-1 hover:bg-gray-800 rounded-lg text-white"
+                className="p-1 hover:bg-emerald-700 rounded-lg text-white"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -626,58 +632,79 @@ export function InvoicesPage() {
             <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-gray-200">
               <div className="w-full overflow-x-auto flex justify-center">
                 
-                {/* قالب التقرير الأبيض والأسود عالي الدقة للطباعة */}
+                {/* قالب الفاتورة المنسق بالألوان المصمم للطباعة والتصدير بدون تقطع النصوص */}
                 <div 
                   id="pdf-preview-content" 
-                  className="w-full max-w-[900px] p-8 bg-white border-2 border-black text-black font-sans shadow-md" 
-                  style={{ direction: 'rtl', textAlign: 'right', color: '#000000', backgroundColor: '#ffffff' }}
+                  className="w-full max-w-[900px] p-8 bg-white border border-gray-300 shadow-md rounded-sm" 
+                  style={{ 
+                    direction: 'rtl', 
+                    textAlign: 'right', 
+                    color: '#000000', 
+                    backgroundColor: '#ffffff',
+                    letterSpacing: 'normal',
+                    wordSpacing: 'normal'
+                  }}
                 >
-                  {/* الهيدر */}
-                  <div className="border-b-2 border-black pb-4 mb-6 text-center">
-                    <h1 className="text-3xl font-black text-black tracking-tight mb-1">شاطر</h1>
-                    <h2 className="text-xl font-bold text-black border-y border-black py-1 my-2 inline-block px-6">{pdfModalData.title}</h2>
-                    <p className="text-xs text-black font-semibold mt-1">تاريخ التقرير: {new Date().toLocaleDateString('ar-EG')}</p>
+                  {/* الهيدر الأنيق */}
+                  <div className="border-b-2 border-emerald-600 pb-4 mb-6 flex justify-between items-center bg-emerald-50 p-4 rounded-lg">
+                    <div className="text-right">
+                      <h2 className="text-lg font-bold text-gray-800 bg-white px-4 py-1.5 rounded border border-emerald-200 shadow-sm inline-block">
+                        {pdfModalData.title}
+                      </h2>
+                      <p className="text-xs text-gray-600 font-medium mt-1">تاريخ التقرير: {new Date().toLocaleDateString('ar-EG')}</p>
+                    </div>
                   </div>
 
-                  {/* الجدول الرئيسي المنسق بالكامل بالأبيض والأسود */}
-                  <table className="w-full text-right border-collapse border-2 border-black text-xs mb-6">
+                  {/* كلمة شاطر فوق الجدول مباشرة */}
+                  <div className="mb-3 text-right">
+                    <h1 
+                      className="text-3xl font-black text-emerald-800 tracking-normal leading-tight"
+                      style={{ letterSpacing: 'normal', display: 'block' }}
+                    >
+                      شاطر
+                    </h1>
+                    <p className="text-xs text-emerald-700 font-semibold">نظام إدارة الفواتير والمبيعات</p>
+                  </div>
+
+                  {/* جدول عرض البيانات منسق بالألوان المريحة */}
+                  <table className="w-full text-right border-collapse text-xs mb-6 overflow-hidden rounded-lg border border-gray-200">
                     <thead>
-                      <tr className="bg-gray-200 text-black border-b-2 border-black">
+                      <tr className="bg-emerald-700 text-white">
                         {pdfModalData.headers.map((h, i) => (
-                          <th key={i} className="p-2.5 border-r border-black font-black text-center whitespace-nowrap">{h}</th>
+                          <th key={i} className="p-3 border-b border-emerald-800 font-bold text-center whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {pdfModalData.rows.map((row, rIdx) => (
-                        <tr key={rIdx} className="border-b border-black">
+                        <tr key={rIdx} className={`border-b border-gray-200 ${rIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
                           {row.map((cell, cIdx) => (
-                            <td key={cIdx} className="p-2 border-r border-black text-center text-black font-bold whitespace-nowrap">{cell}</td>
+                            <td key={cIdx} className="p-2.5 border-r border-gray-200 text-center text-gray-800 font-medium whitespace-nowrap">{cell}</td>
                           ))}
                         </tr>
                       ))}
                     </tbody>
                   </table>
 
-                  {/* ملخص المبالغ والماليات */}
+                  {/* ملخص الحسابات والماليات */}
                   <div className="grid grid-cols-3 gap-3 mb-8">
                     {pdfModalData.summary.map((item, idx) => (
-                      <div key={idx} className="border-2 border-black p-3 text-center bg-gray-50">
-                        <span className="block text-xs text-black font-bold border-b border-black pb-1 mb-1">{item.label}</span>
-                        <span className="block text-sm font-black text-black">{item.value}</span>
+                      <div key={idx} className={`border p-3.5 text-center rounded-lg ${item.bg || 'bg-gray-50 border-gray-200'}`}>
+                        <span className="block text-xs text-gray-600 font-bold border-b border-gray-200/60 pb-1 mb-1">{item.label}</span>
+                        <span className={`block text-base font-black ${item.color || 'text-gray-800'}`}>{item.value}</span>
                       </div>
                     ))}
                   </div>
 
-                  {/* خانات التوقيع والختم */}
-                  <div className="grid grid-cols-2 gap-8 pt-6 border-t-2 border-black mt-8 text-xs font-bold">
+                  {/* خانات التوقيع والاعتماد */}
+                  <div className="grid grid-cols-2 gap-8 pt-6 border-t border-gray-300 mt-8 text-xs font-bold text-gray-700">
                     <div className="text-center space-y-6">
                       <p>توقيع المحاسب / المسئول</p>
-                      <p className="text-gray-400 font-normal">........................................</p>
+                      <p className="text-gray-300 font-normal">........................................</p>
                     </div>
                     <div className="text-center space-y-6">
                       <p>توقيع العميل / المستلم</p>
-                      <p className="text-gray-400 font-normal">........................................</p>
+                      <p className="text-gray-300 font-normal">........................................</p>
                     </div>
                   </div>
 
@@ -686,17 +713,17 @@ export function InvoicesPage() {
               </div>
             </div>
 
-            <div className="p-4 border-t border-gray-300 flex justify-end gap-3 bg-white shrink-0">
+            <div className="p-4 border-t border-gray-200 flex justify-end gap-3 bg-white shrink-0">
               <button
                 onClick={() => setPdfModalData(null)}
-                className="px-4 py-2 border border-gray-400 rounded-lg text-black text-sm font-bold hover:bg-gray-100"
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 text-sm font-bold hover:bg-gray-50"
               >
                 إغلاق
               </button>
               <button
                 onClick={handleExportPDF}
                 disabled={isDownloading || isPreparingPdf}
-                className="px-5 py-2 bg-black text-white rounded-lg text-sm font-bold hover:bg-gray-800 flex items-center gap-2 shadow-sm disabled:opacity-50"
+                className="px-5 py-2 bg-emerald-700 text-white rounded-lg text-sm font-bold hover:bg-emerald-800 flex items-center gap-2 shadow-sm disabled:opacity-50 transition-colors"
               >
                 {(isDownloading || isPreparingPdf) ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -709,7 +736,6 @@ export function InvoicesPage() {
                 تحميل / مشاركة PDF
               </button>
             </div>
-
           </div>
         </div>
       )}
