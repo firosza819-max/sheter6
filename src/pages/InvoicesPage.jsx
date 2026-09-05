@@ -645,18 +645,8 @@ export function InvoicesPage() {
                     wordSpacing: 'normal'
                   }}
                 >
-                  {/* الهيدر الأنيق */}
-                  <div className="border-b-2 border-emerald-600 pb-4 mb-6 flex justify-between items-center bg-emerald-50 p-4 rounded-lg">
-                    <div className="text-right">
-                      <h2 className="text-lg font-bold text-gray-800 bg-white px-4 py-1.5 rounded border border-emerald-200 shadow-sm inline-block">
-                        {pdfModalData.title}
-                      </h2>
-                      <p className="text-xs text-gray-600 font-medium mt-1">تاريخ التقرير: {new Date().toLocaleDateString('ar-EG')}</p>
-                    </div>
-                  </div>
-
-                  {/* كلمة شاطر فوق الجدول مباشرة */}
-                  <div className="mb-3 text-right">
+                  {/* كلمة شاطر والشعار في أعلى التقرير قبل عنوان كشف الحساب */}
+                  <div className="mb-4 text-center sm:text-right border-b border-gray-100 pb-3">
                     <h1 
                       className="text-3xl font-black text-emerald-800 tracking-normal leading-tight"
                       style={{ letterSpacing: 'normal', display: 'block' }}
@@ -664,6 +654,16 @@ export function InvoicesPage() {
                       شاطر
                     </h1>
                     <p className="text-xs text-emerald-700 font-semibold">نظام إدارة الفواتير والمبيعات</p>
+                  </div>
+
+                  {/* الهيدر الأنيق الحاوي لعنوان التقرير والتاريخ */}
+                  <div className="border-b-2 border-emerald-600 pb-4 mb-6 flex justify-between items-center bg-emerald-50 p-4 rounded-lg">
+                    <div className="text-right">
+                      <h2 className="text-lg font-bold text-gray-800 bg-white px-4 py-1.5 rounded border border-emerald-200 shadow-sm inline-block">
+                        {pdfModalData.title}
+                      </h2>
+                      <p className="text-xs text-gray-600 font-medium mt-1">تاريخ التقرير: {new Date().toLocaleDateString('ar-EG')}</p>
+                    </div>
                   </div>
 
                   {/* جدول عرض البيانات منسق بالألوان المريحة */}
